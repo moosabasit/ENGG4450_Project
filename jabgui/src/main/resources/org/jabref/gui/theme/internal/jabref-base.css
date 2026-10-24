@@ -320,6 +320,12 @@
     -fx-icon-color: -fx-text-base-color;
 }
 
+.ikonli-font-icon.inherited-icon-size {
+    /* BUG FIX: Ikonli caches computed sizes as inline pixel styles. Only adaptive icons override
+       that cache; explicitly sized icons must retain their requested dimensions. */
+    -fx-font-size: 1em !important;
+}
+
 .icon-button {
     -fx-background: transparent;
     -fx-background-color: transparent;
@@ -378,6 +384,7 @@
 
 .merge-field-value .action-icon {
     -fx-icon-size: 14;
+    -fx-font-size: 14px !important;
     -fx-icon-color: -fx-text-background-color;
 }
 
@@ -449,7 +456,7 @@
 .sidePaneComponentHeader .ikonli-font-icon {
     -fx-fill: -color-accent;
     -fx-text-fill: -color-accent;
-    -fx-font-size: 1.0em;
+    -fx-font-size: 1.0em !important;
     -fx-icon-color: -color-accent;
 }
 
@@ -506,7 +513,10 @@
 */
 .search-field-icon {
     -fx-icon-color: -fx-text-base-color;
-    -fx-font-size: 1.8em;
+}
+
+.ikonli-font-icon.search-field-icon {
+    -fx-font-size: 1.8em !important;
 }
 
 /* search modifier buttons */
@@ -1051,7 +1061,7 @@ We want to have a look that matches our icons in the tool-bar */
 .error-console .exception .glyph-icon,
 .error-console .output .glyph-icon,
 .error-console .log .glyph-icon {
-    -fx-font-size: 1.8em;
+    -fx-font-size: 1.8em !important;
 }
 
 .error-console .exception .glyph-icon {
@@ -1220,11 +1230,11 @@ We want to have a look that matches our icons in the tool-bar */
 }
 
 .group-filter-bar .glyph-icon {
-    -fx-font-size: 2em;
+    -fx-font-size: 2em !important;
 }
 
 .group-bar .glyph-icon {
-    -fx-font-size: 2em;
+    -fx-font-size: 2em !important;
 }
 
 .group-tree .numberColumn > .hits:all-selected {
@@ -1400,6 +1410,7 @@ We want to have a look that matches our icons in the tool-bar */
 .three-way-merge .field-name .glyph-icon,
 .three-way-merge .field-name .ikonli-font-icon {
     -fx-icon-size: 18;
+    -fx-font-size: 18px !important;
     -fx-icon-color: -color-accent;
 }
 
@@ -1546,6 +1557,7 @@ We want to have a look that matches our icons in the tool-bar */
     -fx-icon-color: -color-accent;
     /* 20px is used, since using em seems to lead infinite icon size growth */
     -fx-icon-size: 24px;
+    -fx-font-size: 24px !important;
 }
 
 .walkthrough-info-text {
@@ -1571,7 +1583,7 @@ We want to have a look that matches our icons in the tool-bar */
     -fx-icon-color: -color-fg-emphasis;
     -fx-fill: -color-fg-emphasis;
     -fx-text-fill: -color-fg-emphasis;
-    -fx-font-size: 2em;
+    -fx-font-size: 2em !important;
 }
 
 .text-flow-more-link {

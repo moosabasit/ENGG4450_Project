@@ -118,6 +118,7 @@ public class JabRefGuiPreferences extends JabRefCliPreferences implements GuiPre
     // endregion
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JabRefGuiPreferences.class);
+    private static final String PREVIEW_TOOLTIP_DURATION = "previewTooltipDuration";
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -1003,6 +1004,9 @@ public class JabRefGuiPreferences extends JabRefCliPreferences implements GuiPre
                 bstPaths,
                 getBoolean(PREVIEW_COVER_IMAGE_DOWNLOAD, defaultValues.shouldDownloadCovers())
         );
+
+        previewPreferences.setEntryPreviewTooltipDuration(getInt(PREVIEW_TOOLTIP_DURATION, defaultValues.getEntryPreviewTooltipDuration()));
+        bindInt(previewPreferences.entryPreviewTooltipDurationProperty(), PREVIEW_TOOLTIP_DURATION, defaultValues.getEntryPreviewTooltipDuration());
 
         // Registered before layoutCyclePosition, so its import runs first and the position can be clamped against the loaded cycle.
         bindCustomList(previewPreferences.getLayoutCycle(), PREVIEW_CYCLE, defaultValues.getLayoutCycle(),

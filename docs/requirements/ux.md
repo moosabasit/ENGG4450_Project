@@ -5,6 +5,23 @@ parent: Requirements
 
 This page collects general UX requirements.
 
+## Icons follow font preference changes without a restart
+`req~ux.icons.live-font-size~1`
+
+Icons sized relative to surrounding text must resize when the user changes the font size or disables its override.
+Existing icons must update without restarting JabRef, while preserving their colors and contextual size proportions.
+Icons with explicitly requested pixel sizes retain those sizes.
+See [issue 17556](https://github.com/JabRef/jabref/issues/17556) and the [implementation notes](../code-howtos/jabref-project-phase-2-changes.md#live-icon-resizing-after-font-preference-changes).
+
+## Entry preview tooltip duration is configurable
+`req~ux.preview-tooltip.duration~1`
+
+Users can configure formatted entry preview tooltip duration in seconds under Preferences > Entry preview.
+The default is five seconds; supported values are whole numbers from 1 to 600.
+Saving the preference affects subsequent previews without restarting, and the value persists across application restarts.
+Canceling preference edits does not change the active duration, and plain field-value tooltips retain their normal timeout.
+See [issue 17502](https://github.com/JabRef/jabref/issues/17502) and the [implementation notes](../code-howtos/jabref-project-phase-2-changes.md#configurable-entry-preview-tooltip-duration).
+
 ## Generally available buttons and menu items are disabled instead of not shown
 `req~ux.disabled-vs-hidden~1`
 

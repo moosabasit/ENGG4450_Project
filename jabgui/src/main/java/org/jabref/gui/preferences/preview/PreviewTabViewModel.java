@@ -62,11 +62,13 @@ import org.slf4j.LoggerFactory;
 public class PreviewTabViewModel implements PreferenceTabViewModel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PreviewTabViewModel.class);
+    private static final Pattern TOOLTIP_DURATION_PATTERN = Pattern.compile("[1-9]|[1-9][0-9]|[1-5][0-9]{2}|600");
     private static final Pattern XML_TAG_PATTERN = Pattern.compile("(?<ELEMENT>(</?\\h*)(\\w+)([^<>]*)(\\h*/?>))"
             + "|(?<COMMENT><!--[^<>]+-->)");
     private static final Pattern XML_ATTRIBUTES_PATTERN = Pattern.compile("(\\w+\\h*)(=)(\\h*\"[^\"]+\")");
 
     private final BooleanProperty showAsExtraTabProperty = new SimpleBooleanProperty(false);
+    private final StringProperty entryPreviewTooltipDuration = new SimpleStringProperty("5");
     private final BooleanProperty showPreviewInEntryTableTooltip = new SimpleBooleanProperty(false);
 
     private final BooleanProperty shouldDownloadCovers = new SimpleBooleanProperty();
@@ -90,6 +92,7 @@ public class PreviewTabViewModel implements PreferenceTabViewModel {
     private final TaskExecutor taskExecutor;
 
     private final Validator chosenListValidator;
+    private final Validator tooltipDurationValidator;
 
     private final CustomLocalDragboard localDragboard;
     private ListProperty<PreviewLayout> dragSourceList = null;
@@ -107,6 +110,10 @@ public class PreviewTabViewModel implements PreferenceTabViewModel {
         this.taskExecutor = taskExecutor;
         this.localDragboard = stateManager.getLocalDragboard();
         this.abbreviationRepository = abbreviationRepository;
+
+        tooltipDurationValidator = new FunctionBasedValidator<>(entryPreviewTooltipDuration,
+                value -> TOOLTIP_DURATION_PATTERN.matcher(value).matches(),
+            ValidationMessage.error(Localization.lang("Enter a whole number of seconds between 1 and 600")));
 
         sourceTextProperty.addListener((_, _, _) -> {
             if (selectedLayoutProperty.getValue() instanceof TextBasedPreviewLayout layout) {
@@ -130,6 +137,7 @@ public class PreviewTabViewModel implements PreferenceTabViewModel {
     public void setValues() {
         showAsExtraTabProperty.set(previewPreferences.shouldShowPreviewAsExtraTab());
         showPreviewInEntryTableTooltip.set(previewPreferences.shouldShowPreviewEntryTableTooltip());
+        entryPreviewTooltipDuration.set(Integer.toString(previewPreferences.getEntryPreviewTooltipDuration()));
         chosenListProperty().getValue().clear();
         chosenListProperty.getValue().addAll(previewPreferences.getLayoutCycle());
 
@@ -226,6 +234,10 @@ public class PreviewTabViewModel implements PreferenceTabViewModel {
         previewPreferences.getLayoutCycle().addAll(chosenListProperty);
         previewPreferences.setShowPreviewAsExtraTab(showAsExtraTabProperty.getValue());
         previewPreferences.setShowPreviewEntryTableTooltip(showPreviewInEntryTableTooltip.getValue());
+        // FEATURE: The dialog edits a copy; only saving a valid value changes the active tooltip preference.
+        if (tooltipDurationValidationStatus().isValid()) {
+            previewPreferences.setEntryPreviewTooltipDuration(Integer.parseInt(entryPreviewTooltipDuration.get()));
+        }
         previewPreferences.setBstPreviewLayoutPaths(bstStylesPaths);
 
         if (!chosenSelectionModelProperty.getValue().getSelectedItems().isEmpty()) {
@@ -240,8 +252,21 @@ public class PreviewTabViewModel implements PreferenceTabViewModel {
         return chosenListValidator.getValidationStatus();
     }
 
+    public StringProperty entryPreviewTooltipDurationProperty() {
+        return entryPreviewTooltipDuration;
+    }
+
+    public ValidationStatus tooltipDurationValidationStatus() {
+        return tooltipDurationValidator.getValidationStatus();
+    }
+
     @Override
     public boolean validateSettings() {
+        if (showPreviewInEntryTableTooltip.get() && !tooltipDurationValidationStatus().isValid()) {
+            tooltipDurationValidationStatus().getHighestMessage()
+                    .ifPresent(message -> dialogService.showErrorDialogAndWait(message.getMessage()));
+            return false;
+        }
         ValidationStatus validationStatus = chosenListValidationStatus();
         if (!validationStatus.isValid()) {
             if (validationStatus.getHighestMessage().isPresent()) {

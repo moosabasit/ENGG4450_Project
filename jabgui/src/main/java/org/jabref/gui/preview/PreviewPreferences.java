@@ -21,6 +21,11 @@ import org.jabref.logic.preview.TextBasedPreviewLayout;
 import org.jabref.model.entry.BibEntryTypesManager;
 
 public class PreviewPreferences {
+    public static final int DEFAULT_TOOLTIP_DURATION = 5;
+    public static final int MAX_TOOLTIP_DURATION = 600;
+    public static final int MIN_TOOLTIP_DURATION = 1;
+
+    private final IntegerProperty entryPreviewTooltipDuration = new SimpleIntegerProperty(DEFAULT_TOOLTIP_DURATION);
     private final ObservableList<PreviewLayout> layoutCycle;
     private final IntegerProperty layoutCyclePosition;
     private final StringProperty customPreviewLayout;
@@ -148,6 +153,19 @@ public class PreviewPreferences {
 
     public BooleanProperty showPreviewEntryTableTooltip() {
         return showPreviewEntryTableTooltip;
+    }
+
+    public int getEntryPreviewTooltipDuration() {
+        // FEATURE: Imported preferences must not produce an invalid or effectively permanent tooltip timeout.
+        return Math.clamp(entryPreviewTooltipDuration.get(), MIN_TOOLTIP_DURATION, MAX_TOOLTIP_DURATION);
+    }
+
+    public void setEntryPreviewTooltipDuration(int seconds) {
+        entryPreviewTooltipDuration.set(Math.clamp(seconds, MIN_TOOLTIP_DURATION, MAX_TOOLTIP_DURATION));
+    }
+
+    public IntegerProperty entryPreviewTooltipDurationProperty() {
+        return entryPreviewTooltipDuration;
     }
 
     public ObservableList<Path> getBstPreviewLayoutPaths() {

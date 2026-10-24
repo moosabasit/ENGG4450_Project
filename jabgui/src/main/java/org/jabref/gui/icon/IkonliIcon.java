@@ -34,6 +34,7 @@ public final class IkonliIcon implements JabRefIcon {
     private final List<Ikon> icons;
     private final @Nullable Color color;
     private final int size;
+    private final boolean explicitSize;
 
     public IkonliIcon(Ikon... icons) {
         this(List.of(icons), null, DEFAULT_SIZE);
@@ -52,9 +53,14 @@ public final class IkonliIcon implements JabRefIcon {
     }
 
     private IkonliIcon(List<Ikon> icons, @Nullable Color color, int size) {
+        this(icons, color, size, false);
+    }
+
+    private IkonliIcon(List<Ikon> icons, @Nullable Color color, int size, boolean explicitSize) {
         this.icons = List.copyOf(icons);
         this.color = color;
         this.size = size;
+        this.explicitSize = explicitSize;
     }
 
     /// Finds the Ikonli icon whose name matches `code` (case-insensitive).
@@ -117,6 +123,10 @@ public final class IkonliIcon implements JabRefIcon {
         // JabRefFontIcon takes care of. Without one, those rules are what colors the icon.
         FontIcon fontIcon = color == null ? FontIcon.of(ikon, size) : new JabRefFontIcon(ikon, size, color);
         fontIcon.getStyleClass().add("glyph-icon");
+        // BUG FIX: Relative CSS must beat Ikonli's generated inline size, but not an explicit withSize request.
+        if (!explicitSize) {
+            fontIcon.getStyleClass().add("inherited-icon-size");
+        }
         return fontIcon;
     }
 
@@ -127,12 +137,12 @@ public final class IkonliIcon implements JabRefIcon {
 
     @Override
     public JabRefIcon withColor(Color color) {
-        return new IkonliIcon(icons, color, size);
+        return new IkonliIcon(icons, color, size, explicitSize);
     }
 
     @Override
     public JabRefIcon withSize(int size) {
-        return new IkonliIcon(icons, color, size);
+        return new IkonliIcon(icons, color, size, true);
     }
 
     @Override

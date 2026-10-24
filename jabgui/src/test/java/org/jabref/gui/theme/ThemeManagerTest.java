@@ -16,10 +16,17 @@ import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.stage.Stage;
 
 import org.jabref.gui.WorkspacePreferences;
+import org.jabref.gui.icon.IconTheme.JabRefIcons;
+import org.jabref.gui.icon.JabRefIconView;
+import org.jabref.gui.icon.JabRefSvgIcon;
+import org.jabref.gui.icon.SvgIcon;
 import org.jabref.gui.testutils.JavaFxExtension;
 import org.jabref.model.util.DummyFileUpdateMonitor;
 import org.jabref.model.util.FileUpdateListener;
@@ -29,6 +36,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.kordamp.ikonli.javafx.FontIcon;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 
@@ -312,6 +322,125 @@ class ThemeManagerTest {
 
         assertEquals(List.of(), fontSizeStyleClasses(initialRoot), "the replaced root should not keep a stale font size");
         assertEquals(List.of("font-size-16"), fontSizeStyleClasses(replacementRoot));
+    }
+
+    /// BUG FIX: Existing icons must follow font changes without being recreated, including icons with a fixed color.
+    @ParameterizedTest
+    @CsvSource(textBlock = """
+            SEARCH,           column-header,           1.0
+            READ_STATUS_READ, column-header,           1.0
+            SEARCH,           sidePaneComponentHeader, 1.0
+            SEARCH,           mainToolbar,             1.8
+            READ_STATUS_READ, mainToolbar,             1.8
+            SEARCH,           search-field,            1.8
+            GROUP_REFINING,   group-filter-bar,        2.0
+            SEARCH,           group-bar,               2.0
+            SEARCH,           walkthrough-quit-button, 2.0
+            """)
+    void existingIconsFollowFontSizeChanges(JabRefIcons icon, String context, double scale) {
+        WorkspacePreferences workspacePreferences = WorkspacePreferences.getDefault();
+        workspacePreferences.setShouldOverrideDefaultFontSize(true);
+        workspacePreferences.setMainFontSize(8);
+        ThemeManager themeManager = createThemeManager(workspacePreferences);
+
+        JavaFxExtension.invokeAndWait(() -> {
+            FontIcon graphic = (FontIcon) icon.getGraphicNode();
+            Paint initialColor = graphic.getIconColor();
+            Label label = new Label("Reference", graphic);
+            JabRefIconView iconView = new JabRefIconView(icon);
+            Label fxmlLabel = new Label("FXML", iconView);
+            JabRefSvgIcon svgGraphic = (JabRefSvgIcon) new SvgIcon("square", "M0 0H10V10H0Z").getGraphicNode();
+            Label svgLabel = new Label("SVG", svgGraphic);
+            if ("search-field".equals(context)) {
+                graphic.getStyleClass().add("search-field-icon");
+                iconView.getChildren().getFirst().getStyleClass().add("search-field-icon");
+                svgGraphic.getStyleClass().add("search-field-icon");
+            }
+            FontIcon fixedGraphic = (FontIcon) icon.withSize(22).withColor(Color.RED).getGraphicNode();
+            JabRefSvgIcon fixedSvgGraphic = (JabRefSvgIcon) new SvgIcon("square", "M0 0H10V10H0Z")
+                    .withSize(22).withColor(Color.RED).getGraphicNode();
+            JabRefIconView fixedIconView = new JabRefIconView(icon, 22);
+            StackPane iconContext = new StackPane(label, fxmlLabel, svgLabel);
+            iconContext.getStyleClass().add(context);
+            StackPane root = new StackPane(iconContext, new Label("Fixed size", fixedGraphic),
+                    new Label("Fixed SVG", fixedSvgGraphic), new Label("Fixed FXML", fixedIconView));
+            Scene scene = new Scene(root);
+            themeManager.updateCssOnScene(scene);
+            Stage stage = new Stage();
+            stage.setScene(scene);
+            try {
+                stage.show();
+                for (int size : List.of(8, 20, 8)) {
+                    workspacePreferences.setMainFontSize(size);
+                    root.applyCss();
+                    root.layout();
+                    // BUG FIX: JavaFX resolves CSS lengths to tenths of a pixel before Ikonli truncates to an integer.
+                    double expectedSize = Math.round(label.getFont().getSize() * scale * 10) / 10.0;
+                    assertEquals((int) expectedSize, graphic.getIconSize(),
+                            "Existing icon should match the current label font at " + size + "pt");
+                    assertEquals((int) expectedSize, ((FontIcon) iconView.getChildren().getFirst()).getIconSize(),
+                            "Default FXML icon should follow the current font");
+                    assertEquals(expectedSize, svgGraphic.getSize(), 0.01,
+                            "SVG icon should follow the current font");
+                    assertEquals(22, fixedGraphic.getIconSize(), "Explicit pixel sizes should not follow font preferences");
+                    assertEquals(22, fixedSvgGraphic.getSize(), 0.01);
+                    assertEquals(22, ((FontIcon) fixedIconView.getChildren().getFirst()).getIconSize());
+                    assertEquals(Color.RED, fixedGraphic.getFill());
+                    assertEquals(Color.RED, fixedSvgGraphic.getColor());
+                    if (icon == JabRefIcons.READ_STATUS_READ) {
+                        assertEquals(initialColor, graphic.getFill(), "The read-status color should survive resizing");
+                    }
+                }
+                workspacePreferences.setShouldOverrideDefaultFontSize(false);
+                root.applyCss();
+                root.layout();
+                assertEquals((int) (Math.round(label.getFont().getSize() * scale * 10) / 10.0), graphic.getIconSize(),
+                        "Disabling the override should restore the default icon size");
+            } finally {
+                stage.close();
+            }
+        });
+    }
+
+    @ParameterizedTest
+    @CsvSource(textBlock = """
+            merge-field-value,          label,      action-icon, 14
+            three-way-merge,            field-name, glyph-icon,  18
+            walkthrough-info-container, label,      glyph-icon,  24
+            """)
+    void cssPixelSizesRemainFixedAfterFontSizeChanges(String context, String labelStyle, String iconStyle, int size) {
+        WorkspacePreferences workspacePreferences = WorkspacePreferences.getDefault();
+        workspacePreferences.setShouldOverrideDefaultFontSize(true);
+        ThemeManager themeManager = createThemeManager(workspacePreferences);
+
+        JavaFxExtension.invokeAndWait(() -> {
+            FontIcon graphic = (FontIcon) JabRefIcons.SEARCH.getGraphicNode();
+            graphic.getStyleClass().add(iconStyle);
+            JabRefSvgIcon svgGraphic = (JabRefSvgIcon) new SvgIcon("square", "M0 0H10V10H0Z").getGraphicNode();
+            svgGraphic.getStyleClass().add(iconStyle);
+            Label label = new Label("Reference", graphic);
+            Label svgLabel = new Label("SVG", svgGraphic);
+            label.getStyleClass().add(labelStyle);
+            svgLabel.getStyleClass().add(labelStyle);
+            StackPane root = new StackPane(label, svgLabel);
+            root.getStyleClass().add(context);
+            Scene scene = new Scene(root);
+            themeManager.updateCssOnScene(scene);
+            Stage stage = new Stage();
+            stage.setScene(scene);
+            try {
+                stage.show();
+                for (int fontSize : List.of(8, 20, 8)) {
+                    workspacePreferences.setMainFontSize(fontSize);
+                    root.applyCss();
+                    root.layout();
+                    assertEquals(size, graphic.getIconSize(), "CSS pixel sizes should remain fixed");
+                    assertEquals(size, svgGraphic.getSize(), 0.01);
+                }
+            } finally {
+                stage.close();
+            }
+        });
     }
 
     private static List<String> fontSizeStyleClasses(Parent parent) {

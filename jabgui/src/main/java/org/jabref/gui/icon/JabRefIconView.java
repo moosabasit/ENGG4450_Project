@@ -67,10 +67,12 @@ public class JabRefIconView extends Group {
     /// (e.g. validation that parameter passed to "icon" is indeed of type [IconTheme.JabRefIcons]).
     private final ObjectProperty<IconTheme.JabRefIcons> glyph;
     private final ObjectProperty<Number> glyphSize;
+    private boolean explicitSize;
 
     public JabRefIconView(JabRefIcons icon, int size) {
         this.glyph = new SimpleObjectProperty<>(icon);
         this.glyphSize = new SimpleObjectProperty<>(size);
+        this.explicitSize = true;
         initialize();
     }
 
@@ -87,14 +89,19 @@ public class JabRefIconView extends Group {
 
     private void initialize() {
         EasyBind.subscribe(glyph, _ -> updateGraphic());
-        EasyBind.subscribe(glyphSize, _ -> updateGraphic());
+        glyphSize.addListener((_, _, _) -> {
+            explicitSize = true;
+            updateGraphic();
+        });
         EasyBind.subscribe(color, _ -> applyColor());
     }
 
     /// Rebuilds the hosted node from the current glyph, sized to the current glyph size. The icon applies the size
     /// to its own backing node type (font or SVG), so this view stays agnostic to which one it is.
     private void updateGraphic() {
-        Node node = glyph.get().withSize(glyphSize.get().intValue()).getGraphicNode();
+        // BUG FIX: The default FXML view follows its parent font; only a requested glyph size is fixed in pixels.
+        JabRefIcon icon = explicitSize ? glyph.get().withSize(glyphSize.get().intValue()) : glyph.get();
+        Node node = icon.getGraphicNode();
         getChildren().setAll(node);
         applyColor();
     }

@@ -5,7 +5,9 @@ import java.util.Set;
 
 import org.jabref.gui.entryeditor.EntryEditorTabModel;
 
+import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -18,8 +20,40 @@ class JabRefGuiPreferencesTest {
     private static final EntryEditorTabModel SOURCE =
             new EntryEditorTabModel.BuiltInTab(EntryEditorTabModel.BuiltIn.SOURCE, true);
 
-    @Test
-    void storedTabOrderIsApplied() {
+        @Test
+        @ResourceLock("Preferences")
+        void tooltipDurationSurvivesReloadWithFiveSecondDefault() {
+                String key = "previewTooltipDuration";
+                TestPreferences preferences = new TestPreferences();
+                boolean previouslyStored = preferences.hasKey(key);
+                String previousValue = preferences.get(key, "");
+                try {
+                        preferences.removeTooltipDuration();
+                        assertEquals(5, preferences.getPreviewPreferences().getEntryPreviewTooltipDuration());
+                        preferences.getPreviewPreferences().setEntryPreviewTooltipDuration(30);
+                        assertEquals("30", preferences.get(key, ""));
+                        assertEquals(30, new JabRefGuiPreferences().getPreviewPreferences().getEntryPreviewTooltipDuration());
+                        preferences.getPreviewPreferences().setEntryPreviewTooltipDuration(5);
+                        assertEquals(5, new JabRefGuiPreferences().getPreviewPreferences().getEntryPreviewTooltipDuration());
+                } finally {
+                        // FEATURE: Persistence coverage must restore the contributor's existing duration preference.
+                        if (previouslyStored) {
+                                preferences.put(key, previousValue);
+                        } else {
+                                preferences.removeTooltipDuration();
+                        }
+        }
+        }
+
+        @NullMarked
+        private static class TestPreferences extends JabRefGuiPreferences {
+                void removeTooltipDuration() {
+                        remove("previewTooltipDuration");
+                }
+        }
+
+        @Test
+        void storedTabOrderIsApplied() {
         List<EntryEditorTabModel> ordered = JabRefGuiPreferences.applyStoredTabOrder(
                 List.of(PREVIEW, MAIN, SOURCE),
                 List.of("SOURCE", "ALL_FIELDS"));

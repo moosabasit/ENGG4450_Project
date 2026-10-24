@@ -3,6 +3,7 @@ package org.jabref.gui.maintable;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
+import javafx.util.Duration;
 
 import org.jabref.gui.DialogService;
 import org.jabref.gui.preferences.GuiPreferences;
@@ -16,6 +17,7 @@ public class MainTableTooltip extends Tooltip {
     private final PreviewViewer preview;
     private final GuiPreferences preferences;
     private final Label fieldValueLabel = new Label();
+    private final Duration defaultShowDuration = getShowDuration();
 
     private boolean resizeScheduled;
 
@@ -45,11 +47,10 @@ public class MainTableTooltip extends Tooltip {
 
     public Tooltip createTooltip(BibDatabaseContext databaseContext, BibEntry entry, String fieldValue) {
         if (preferences.getPreviewPreferences().shouldShowPreviewEntryTableTooltip()) {
-            preview.setLayout(preferences.getPreviewPreferences().getSelectedPreviewLayout());
-            preview.setDatabaseContext(databaseContext);
-            preview.setEntry(entry);
-            setGraphic(preview);
+            return createPreviewTooltip(databaseContext, entry);
         } else {
+            // FEATURE: Reusing the preview tooltip for field text must not retain the custom timeout.
+            setShowDuration(defaultShowDuration);
             fieldValueLabel.setText(fieldValue);
             setGraphic(fieldValueLabel);
         }
@@ -61,6 +62,8 @@ public class MainTableTooltip extends Tooltip {
     }
 
     public Tooltip createPreviewTooltip(BibDatabaseContext databaseContext, BibEntry entry) {
+        // FEATURE: Read the saved value on every hover so existing tables need no restart.
+        setShowDuration(Duration.seconds(preferences.getPreviewPreferences().getEntryPreviewTooltipDuration()));
         preview.setLayout(preferences.getPreviewPreferences().getSelectedPreviewLayout());
         preview.setDatabaseContext(databaseContext);
         preview.setEntry(entry);
